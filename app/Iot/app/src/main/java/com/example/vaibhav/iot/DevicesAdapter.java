@@ -10,20 +10,27 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CompoundButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.example.vaibhav.iot.data.DeviceContract;
 import com.example.vaibhav.iot.data.IotDbHelper;
-import com.example.vaibhav.iot.utilities.Trigger;
+import com.example.vaibhav.iot.utilities.Client;
+import com.google.firebase.database.FirebaseDatabase;
 
 /**
  * Created by Vaibhav on 9/18/2017.
  */
+
 public class DevicesAdapter extends RecyclerView.Adapter<DevicesAdapter.DeviceViewHolder> {
     private static final String TAG = DevicesAdapter.class.getName();
-
+    FirebaseDatabase firebaseDatabase;
     private Cursor mCursor;
     private Context mContext;
+    private String Value;
+    private int task;
+    private int GPIO_NO;
 
     DevicesAdapter(Context context){
         mContext = context;
@@ -51,7 +58,7 @@ public class DevicesAdapter extends RecyclerView.Adapter<DevicesAdapter.DeviceVi
 
         //set device trigger state:
 
-        int isChecked = mCursor.getInt(mCursor.getColumnIndex(DeviceContract.DeviceEntry.COLUMN_DEVICE_STATE));
+        final int isChecked = mCursor.getInt(mCursor.getColumnIndex(DeviceContract.DeviceEntry.COLUMN_DEVICE_STATE));
         holder.deviceTrigger.setChecked(isChecked==1);
 
         //set device type and port number:
@@ -60,23 +67,78 @@ public class DevicesAdapter extends RecyclerView.Adapter<DevicesAdapter.DeviceVi
 
         //set device trigger:
         holder.id = mCursor.getInt(mCursor.getColumnIndex(DeviceContract.DeviceEntry._ID));
-        holder.deviceTrigger.setOnClickListener(new View.OnClickListener() {
+       /* firebaseDatabase = FirebaseDatabase.getInstance();
+        DatabaseReference reference_ip = firebaseDatabase.getReference("GPIO_"+holder.portNumber);
+        reference_ip.addValueEventListener(new ValueEventListener() {
             @Override
-            public void onClick(View view) {
-                //save time and update database:
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                Value = dataSnapshot.getValue(String.class);
+                if (Value.equals("0"))
+                {
+
+                    holder.deviceTrigger.setChecked(false);
+                    task = 1;
+                }
+                else
+                {
+                    holder.deviceTrigger.setChecked(true);
+                    task=0;
+                }
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+
+            }
+
+
+
+        });*/
+
+        holder.deviceTrigger.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+               int i = (b) ? 1 : 0;
+                Log.i("Device_Adapter","State changed "+holder.portNumber);
+                    if (b)
+                    {
+
+                            Client client = new Client("192.168.1.10",holder.portNumber,i);
+                            client.execute();
+                            Log.i("Device_Adapter","State changed "+holder.portNumber);
+                    }
+                    else
+                    {
+                        Client client = new Client("192.168.1.10",holder.portNumber,i);
+                        client.execute();
+                    }
                 IotDbHelper dbHelper = new IotDbHelper(mContext);
                 String whereClause = DeviceContract.DeviceEntry._ID + " = " + holder.id;
+
+
 
                 ContentValues values = new ContentValues();
                 values.put(DeviceContract.DeviceEntry.COLUMN_LAST_TRIGGERED, System.currentTimeMillis());
                 values.put(DeviceContract.DeviceEntry.COLUMN_DEVICE_STATE, (holder.deviceTrigger.isChecked()) ? 1 : 0);
 
                 dbHelper.getWritableDatabase().update(DeviceContract.DeviceEntry.TABLE_NAME,values,whereClause,null);
+                setIcon(holder);
+            }
 
-                //send trigger:
-                Trigger.triggerDevice(holder.deviceType,holder.portNumber);
+        });
+
+        setIcon(holder);
+
+        holder.deviceIcon.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                holder.deviceTrigger.setChecked(!holder.deviceTrigger.isChecked());
+                setIcon(holder);
             }
         });
+
     }
 
     @Override
@@ -100,11 +162,13 @@ public class DevicesAdapter extends RecyclerView.Adapter<DevicesAdapter.DeviceVi
         SwitchCompat deviceTrigger;
         int id, portNumber;
         String deviceType;
+        ImageView deviceIcon;
 
         DeviceViewHolder(View itemView) {
             super(itemView);
             deviceName = itemView.findViewById(R.id.device_name);
             deviceTrigger = itemView.findViewById(R.id.device_trigger);
+            deviceIcon = itemView.findViewById(R.id.device_icon);
             itemView.setOnClickListener(this);
         }
 
@@ -118,6 +182,16 @@ public class DevicesAdapter extends RecyclerView.Adapter<DevicesAdapter.DeviceVi
             i.putExtra("deviceType",deviceType);
             i.putExtra("portNumber",portNumber);
             mContext.startActivity(i);
+            //Log.i("Device_Adapter","State changed ");
+
         }
+
+    }
+
+    public static void setIcon(DeviceViewHolder holder){
+        if(holder.deviceTrigger.isChecked()){
+            holder.deviceIcon.setImageResource(R.drawable.bulbon);
+        }
+        else holder.deviceIcon.setImageResource(R.drawable.bulboff);
     }
 }
