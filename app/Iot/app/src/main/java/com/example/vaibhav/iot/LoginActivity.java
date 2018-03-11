@@ -2,15 +2,21 @@ package com.example.vaibhav.iot;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -27,16 +33,33 @@ public class LoginActivity extends AppCompatActivity {
         final EditText email,password;
         Button button_Login;
         final ProgressBar progressBar;
+        TextView textView_reset_password;
+        CheckBox checkBox_show_pwd;
+
         firebaseAuth = FirebaseAuth.getInstance();
+        if (firebaseAuth.getCurrentUser()!=null) {
+            startActivity(new Intent(LoginActivity.this, MainActivity.class));
+            finish();
+        }
         setContentView(R.layout.activity_login);
 
-        final SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 
         email = (EditText)findViewById(R.id.email_login);
         password = (EditText)findViewById(R.id.password_login);
-        progressBar = (ProgressBar)findViewById(R.id.progress_bar_login);
+        progressBar = (ProgressBar)findViewById(R.id.progressBarhorizontal);
+        progressBar.setProgressTintList(ColorStateList.valueOf(Color.YELLOW));
+        checkBox_show_pwd = (CheckBox)findViewById(R.id.checkBox_showPwd);
         progressBar.setVisibility(View.INVISIBLE);
         button_Login =(Button)findViewById(R.id.button_login);
+        textView_reset_password = (TextView)findViewById(R.id.forgot_text);
+        textView_reset_password.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(LoginActivity.this,ForgotPasswordActivity.class));
+            }
+        });
         button_Login.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -52,6 +75,7 @@ public class LoginActivity extends AppCompatActivity {
                 }
                 progressBar.setVisibility(View.VISIBLE);
 
+
                 firebaseAuth.signInWithEmailAndPassword(email_value,password_value).addOnCompleteListener(LoginActivity.this, new OnCompleteListener<AuthResult>() {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
@@ -59,11 +83,12 @@ public class LoginActivity extends AppCompatActivity {
                         {
                             email.setError("Enter Correct Email");
                             password.setError("Enter Correct Password");
+                            progressBar.setVisibility(View.INVISIBLE);
                         }
                         else {
                             Toast.makeText(LoginActivity.this, "Login Successfull", Toast.LENGTH_SHORT).show();
-                            sharedPref.edit().putString(getString(R.string.email),email.getText().toString()).apply();
-                            sharedPref.edit().putString(getString(R.string.password),password.getText().toString()).apply();
+                           // sharedPref.edit().putString(getString(R.string.email),email.getText().toString()).apply();
+                            //sharedPref.edit().putString(getString(R.string.password),password.getText().toString()).apply();
                             Intent i = new Intent(LoginActivity.this,MainActivity.class);
                             startActivity(i);
                         }
@@ -73,9 +98,26 @@ public class LoginActivity extends AppCompatActivity {
                 
             }
         });
+        checkBox_show_pwd.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if (b)
+                {
+                    password.setInputType(InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
 
-        Button registerButton = findViewById(R.id.signup_button_login);
-        registerButton.setOnClickListener(new View.OnClickListener() {
+                }
+                else
+                {
+                    password.setInputType(InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                    String temp_pass= password.getText().toString();
+                    password.clearComposingText();
+                    password.setText(temp_pass);
+                }
+            }
+        });
+
+        TextView textView_SignUp = (TextView)findViewById(R.id.signup_text);
+        textView_SignUp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Intent i = new Intent(LoginActivity.this,SignUpActivity.class);
